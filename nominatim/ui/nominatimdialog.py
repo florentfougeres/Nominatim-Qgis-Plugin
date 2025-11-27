@@ -115,7 +115,6 @@ class NominatimDialog(QDockWidget, FORM_CLASS):
 
     def cellEntered(self, row, col):
         item = self.tableResult.item(row, 0)
-
         self.rbPoint.reset()
         self.rbPolygon.reset()
         self.showItem(item)
@@ -131,8 +130,22 @@ class NominatimDialog(QDockWidget, FORM_CLASS):
             self.doMask(item)
 
     def populateRow(self, item, idx):
-        osm_id = item.get("osm_id")
-        name = item["display_name"]
+        print(item)
+        oid = item.get("osm_id")
+        osm_id = item.get("osm_type")[0] + str(item.get("osm_id"))
+        name = item["name"]
+        wikidata = item.get("extratags", {}).get("wikidata")
+        wikipedia = item.get("extratags", {}).get("wikipedia")
+        wikipedia_en = item.get("extratags", {}).get("wikipedia:en")
+        capacity = item.get("extratags", {}).get("capacity")
+
+        wikipedia_url = None
+        a = wiki_title_to_url(item.get("extratags", {}).get("wikipedia"))
+        b = wiki_title_to_url(item.get("extratags", {}).get("wikipedia:en"))
+        if a.startswith("http"):
+            wikipedia_url = a
+        elif b.startswith("http"):
+            wikipedia_url = b
 
         try:
             className = QApplication.translate("nominatim", item["class"], None)
@@ -196,7 +209,13 @@ class NominatimDialog(QDockWidget, FORM_CLASS):
 
         ogrFeature.SetGeometry(ogrGeom)
         ogrFeature.SetFID(int(idx + 1))
+        ogrFeature.SetField("oid", oid)
         ogrFeature.SetField("osm_id", osm_id)
+        ogrFeature.SetField("wikidata", wikidata)
+        ogrFeature.SetField("wikipedia", wikipedia)
+        ogrFeature.SetField("wikipedia:en", wikipedia_en)
+        ogrFeature.SetField("wikipedia_url", wikipedia_url)
+        ogrFeature.SetField("capacity", capacity)
         ogrFeature.SetField("class", className)
         ogrFeature.SetField("type", typeName)
         ogrFeature.SetField("name", name)
@@ -364,7 +383,13 @@ class NominatimDialog(QDockWidget, FORM_CLASS):
         self.transform(geom)
 
         fields = QgsFields()
-        fields.append(QgsField("osm_id", QVariant.LongLong))
+        fields.append(QgsField("oid", QVariant.LongLong))
+        fields.append(QgsField("osm_id", QVariant.String))
+        fields.append(QgsField("wikidata", QVariant.String))
+        fields.append(QgsField("wikipedia", QVariant.String))
+        fields.append(QgsField("wikipedia:en", QVariant.String))
+        fields.append(QgsField("wikipedia_url", QVariant.String))
+        fields.append(QgsField("capacity", QVariant.LongLong))
         fields.append(QgsField("class", QVariant.String))
         fields.append(QgsField("type", QVariant.String))
         fields.append(QgsField("name", QVariant.String))
@@ -374,7 +399,15 @@ class NominatimDialog(QDockWidget, FORM_CLASS):
         fet.initAttributes(2)
         fet.setFields(fields)
         fet.setGeometry(geom)
-        fet.setAttribute("osm_id", (ogrFeature.GetFieldAsInteger64("osm_id")))
+        fet.setAttribute("oid", (ogrFeature.GetFieldAsInteger64("oid")))
+        fet.setAttribute("osm_id", (ogrFeature.GetFieldAsString("osm_id")))
+        fet.setAttribute("wikidata", (ogrFeature.GetFieldAsString("wikidata")))
+        fet.setAttribute("wikipedia", (ogrFeature.GetFieldAsString("wikipedia")))
+        fet.setAttribute("wikipedia:en", (ogrFeature.GetFieldAsString("wikipedia:en")))
+        fet.setAttribute(
+            "wikipedia_url", (ogrFeature.GetFieldAsString("wikipedia_url"))
+        )
+        fet.setAttribute("capacity", (ogrFeature.GetFieldAsInteger64("capacity")))
         fet.setAttribute("class", (ogrFeature.GetFieldAsString("class")))
         fet.setAttribute("type", (ogrFeature.GetFieldAsString("type")))
         fet.setAttribute("name", (ogrFeature.GetFieldAsString("name")))
@@ -391,7 +424,7 @@ class NominatimDialog(QDockWidget, FORM_CLASS):
                 if vl:
                     self.singleLayerId[geom.type()] = vl.id()
         else:
-            layerName = "OSM " + ogrFeature.GetFieldAsString("osm_id")
+            layerName = "OSM " + ogrFeature.GetFieldAsString("oid")
             vl = self.addNewLayer(layerName, geom.type(), fields)
 
         if vl is not None:
@@ -413,8 +446,22 @@ class NominatimDialog(QDockWidget, FORM_CLASS):
         Args:
             feature_definition: Feature definition to add the fields to.
         """
-        oFLD = ogr.FieldDefn("osm_id", ogr.OFTInteger64)
+        oFLD = ogr.FieldDefn("oid", ogr.OFTInteger64)
         feature_definition.AddFieldDefn(oFLD)
+
+        oFLD = ogr.FieldDefn("osm_id", ogr.OFTString)
+        feature_definition.AddFieldDefn(oFLD)
+        oFLD = ogr.FieldDefn("wikidata", ogr.OFTString)
+        feature_definition.AddFieldDefn(oFLD)
+        oFLD = ogr.FieldDefn("wikipedia", ogr.OFTString)
+        feature_definition.AddFieldDefn(oFLD)
+        oFLD = ogr.FieldDefn("wikipedia:en", ogr.OFTString)
+        feature_definition.AddFieldDefn(oFLD)
+        oFLD = ogr.FieldDefn("wikipedia_url", ogr.OFTString)
+        feature_definition.AddFieldDefn(oFLD)
+        oFLD = ogr.FieldDefn("capacity", ogr.OFTInteger64)
+        feature_definition.AddFieldDefn(oFLD)
+
         oFLD = ogr.FieldDefn("class", ogr.OFTString)
         feature_definition.AddFieldDefn(oFLD)
         oFLD = ogr.FieldDefn("type", ogr.OFTString)
@@ -430,7 +477,7 @@ class NominatimDialog(QDockWidget, FORM_CLASS):
         mapcrs = self.plugin.canvas.mapSettings().destinationCrs()
 
         ogrFeature = item.data(Qt.ItemDataRole.UserRole)
-        layerName = "OSM " + ogrFeature.GetFieldAsString("osm_id")
+        layerName = "OSM " + ogrFeature.GetFieldAsString("oid")
         geom = QgsGeometry.fromWkt(ogrFeature.GetGeometryRef().ExportToWkt())
         self.transform(geom)
 
@@ -446,9 +493,31 @@ class NominatimDialog(QDockWidget, FORM_CLASS):
 
             except Exception:
                 maskLayer = self.doLayer(item, True)
-                maskLayer.loadNamedStyle(str(DIR_PLUGIN_ROOT / "resources" / "mask.qml"))
+                maskLayer.loadNamedStyle(
+                    str(DIR_PLUGIN_ROOT / "resources" / "mask.qml")
+                )
                 maskLayer.triggerRepaint()
 
     def closeEvent(self, event):
         self.closingPlugin.emit()
         event.accept()
+
+
+def wiki_title_to_url(title: str) -> str:
+    """
+    Transforme un titre Wikipedia de type 'en:Emirates Stadium' en URL complète.
+    """
+    # Séparer le code de langue et le titre
+    if not title:
+        return None
+    if title.startswith("en"):
+        lang, page = title.split(":", 1)
+
+        # Remplacer les espaces par des underscores pour correspondre à la convention Wikipedia
+        page = page.replace(" ", "_")
+
+        # Construire l'URL
+        url = f"https://{lang}.wikipedia.org/wiki/{page}"
+    else:
+        url = title
+    return url
