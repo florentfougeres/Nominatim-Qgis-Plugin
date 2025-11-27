@@ -134,17 +134,30 @@ class NominatimDialog(QDockWidget, FORM_CLASS):
         oid = item.get("osm_id")
         osm_id = item.get("osm_type")[0] + str(item.get("osm_id"))
         name = item["name"]
-        wikidata = item.get("extratags", {}).get("wikidata")
-        wikipedia = item.get("extratags", {}).get("wikipedia")
-        wikipedia_en = item.get("extratags", {}).get("wikipedia:en")
-        capacity = item.get("extratags", {}).get("capacity")
+
+        extratags = item.get("extratags", {}) or {}
+
+        wikidata = extratags.get("wikidata")
+        wikipedia = extratags.get("wikipedia")
+        wikipedia_en = extratags.get("wikipedia:en")
+        capacity = extratags.get("capacity")
 
         wikipedia_url = None
-        a = wiki_title_to_url(item.get("extratags", {}).get("wikipedia"))
-        b = wiki_title_to_url(item.get("extratags", {}).get("wikipedia:en"))
-        if a.startswith("http"):
+        try:
+            a = extratags.get("wikipedia")
+            a = wiki_title_to_url(a) if a else None
+        except Exception:
+            a = None
+
+        try:
+            b = extratags.get("wikipedia:en")
+            b = wiki_title_to_url(b) if b else None
+        except Exception:
+            b = None
+
+        if isinstance(a, str) and a.startswith("http"):
             wikipedia_url = a
-        elif b.startswith("http"):
+        elif isinstance(b, str) and b.startswith("http"):
             wikipedia_url = b
 
         try:
