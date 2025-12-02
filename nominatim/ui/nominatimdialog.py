@@ -181,7 +181,13 @@ class NominatimDialog(QDockWidget, FORM_CLASS):
         # contain all the tags not already included in the class, address, etc
         # fields. Other nominatim servers can be configured differently.
         address = item.get("address")
+        city = None
+
         if address:
+            try:
+                city = address.get("city")
+            except:
+                pass
             address = tools.dict_to_hstore_string(address)
         else:
             address = ""
@@ -234,6 +240,7 @@ class NominatimDialog(QDockWidget, FORM_CLASS):
         ogrFeature.SetField("name", name)
         ogrFeature.SetField("address", address)
         ogrFeature.SetField("extratags", extratags)
+        ogrFeature.SetField("city", city)
 
         item = QTableWidgetItem(name)
         item.setFlags(Qt.ItemFlag.ItemIsSelectable | Qt.ItemFlag.ItemIsEnabled)
@@ -405,7 +412,16 @@ class NominatimDialog(QDockWidget, FORM_CLASS):
         fields.append(QgsField("capacity", QVariant.LongLong))
         fields.append(QgsField("class", QVariant.String))
         fields.append(QgsField("type", QVariant.String))
+        fields.append(QgsField("city", QVariant.String))
         fields.append(QgsField("name", QVariant.String))
+        fields.append(QgsField("alt_name", QVariant.String))
+        fields.append(QgsField("built_year", QVariant.LongLong))
+        fields.append(QgsField("last_renovation", QVariant.LongLong))
+        fields.append(QgsField("last_renovation", QVariant.Bool))
+        fields.append(QgsField("events", QVariant.String))
+        fields.append(QgsField("photo_url_in", QVariant.String))
+        fields.append(QgsField("photo_url_out", QVariant.String))
+        fields.append(QgsField("capacity", QVariant.LongLong))
         fields.append(QgsField("address", QVariant.String))
         fields.append(QgsField("extratags", QVariant.String))
         fet = QgsFeature()
@@ -414,13 +430,18 @@ class NominatimDialog(QDockWidget, FORM_CLASS):
         fet.setGeometry(geom)
         fet.setAttribute("oid", (ogrFeature.GetFieldAsInteger64("oid")))
         fet.setAttribute("osm_id", (ogrFeature.GetFieldAsString("osm_id")))
+        fet.setAttribute("city", (ogrFeature.GetFieldAsString("city")))
         fet.setAttribute("wikidata", (ogrFeature.GetFieldAsString("wikidata")))
         fet.setAttribute("wikipedia", (ogrFeature.GetFieldAsString("wikipedia")))
         fet.setAttribute("wikipedia:en", (ogrFeature.GetFieldAsString("wikipedia:en")))
         fet.setAttribute(
             "wikipedia_url", (ogrFeature.GetFieldAsString("wikipedia_url"))
         )
-        fet.setAttribute("capacity", (ogrFeature.GetFieldAsInteger64("capacity")))
+        fet.setAttribute("alt_name", self.editSearch.text())
+        if (ogrFeature.GetFieldAsInteger64("capacity")) == 0 :
+            pass
+        else :
+            fet.setAttribute("capacity", (ogrFeature.GetFieldAsInteger64("capacity")))
         fet.setAttribute("class", (ogrFeature.GetFieldAsString("class")))
         fet.setAttribute("type", (ogrFeature.GetFieldAsString("type")))
         fet.setAttribute("name", (ogrFeature.GetFieldAsString("name")))
@@ -471,6 +492,8 @@ class NominatimDialog(QDockWidget, FORM_CLASS):
         oFLD = ogr.FieldDefn("wikipedia:en", ogr.OFTString)
         feature_definition.AddFieldDefn(oFLD)
         oFLD = ogr.FieldDefn("wikipedia_url", ogr.OFTString)
+        feature_definition.AddFieldDefn(oFLD)
+        oFLD = ogr.FieldDefn("city", ogr.OFTString)
         feature_definition.AddFieldDefn(oFLD)
         oFLD = ogr.FieldDefn("capacity", ogr.OFTInteger64)
         feature_definition.AddFieldDefn(oFLD)
