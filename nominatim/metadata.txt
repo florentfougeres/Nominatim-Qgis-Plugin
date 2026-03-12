@@ -1,7 +1,7 @@
 [general]
 name=OSM place search
 qgisMinimumVersion=3.40
-qgisMaximumVersion=3.98
+qgisMaximumVersion=4.99
 description=Location search helper
 about=Based on OSM data, Nominatim online tool (https://operations.osmfoundation.org/policies/nominatim/)
 version=1.5.1-dev
