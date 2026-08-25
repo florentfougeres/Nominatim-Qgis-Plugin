@@ -2,3 +2,8 @@ nominatim/log.txt
 .vscode/settings.json
 *.log
 *.sh
+nominatim/logic/__pycache__/__init__.cpython-312.pyc
+nominatim/logic/__pycache__/tools.cpython-312.pyc
+nominatim/ui/__pycache__/__init__.cpython-312.pyc
+nominatim/ui/__pycache__/nominatim_conf_dlg.cpython-312.pyc
+nominatim/ui/__pycache__/nominatimdialog.cpython-312.pyc
